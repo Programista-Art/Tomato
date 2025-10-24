@@ -1,0 +1,16 @@
+// Plik: test.txt
+
+float x = 10
+float y = 0
+
+if x > 5 then
+  print('X jest wieksze od 5!')
+  y = x * 2
+else
+  print('X nie jest wieksze od 5.')
+  y = 0
+
+
+print('--- Koniec programu ---')
+print('Wartosc y to:')
+print(y)

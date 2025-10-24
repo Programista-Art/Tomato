@@ -1,0 +1,51 @@
+Oto lista wszystkich funkcji i słów kluczowych, które zaimplementowałeś w swoim interpreterze (w wersji angielskiej, którą ostatnio poprawiliśmy):
+
+## Główne Struktury Sterujące
+
+* `if ... then ... else ... end_if`
+* `while ... do ... end_while`
+* `repeat ... until`
+
+---
+
+## Sterowanie Pętlami
+
+* `break` (przerywa pętlę)
+* `continue` (przechodzi do następnej iteracji pętli)
+
+---
+
+## Deklaracja Zmiennych
+
+* `float nazwa = ...` (do deklaracji liczby zmiennoprzecinkowej)
+* `string nazwa = ...` (do deklaracji tekstu)
+* `bool nazwa = ...` (do deklaracji wartości logicznej `true`/`false`)
+* `char nazwa = ...` (do deklaracji pojedynczego znaku, np. `'a'`)
+
+---
+
+## Wejście / Wyjście
+
+* `print(...)` (wypisuje tekst, zmienną lub wynik wyrażenia)
+* `read(...)` (służy do przypisania wartości zebranej od użytkownika, np. `x = read('Podaj imię')`)
+
+---
+
+## Funkcje Konwersji Typów
+
+* `strToFloat(...)` (konwertuje tekst na liczbę, np. `x = strToFloat('123.5')`)
+* `floatToStr(...)` (konwertuje liczbę na tekst, np. `s = floatToStr(x * 2)`)
+
+---
+
+## Funkcje Matematyczne
+
+* `sin(...)` (sinus)
+* `cos(...)` (cosinus)
+* `sqrt(...)` (pierwiastek kwadratowy)
+
+---
+
+## Komendy Interpretera
+
+* `exit` (kończy działanie programu w trybie interaktywnym)
