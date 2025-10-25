@@ -1,4 +1,5 @@
 {$MODE DELPHI}
+{$H+}
 {$APPTYPE CONSOLE}
 
 program tomato;
@@ -394,7 +395,7 @@ begin
         ElseBlock := ParseCodeBlock(CodeLines, i, 'end_if', 'if');
         // 'i' teraz wskazuje na linię 'end_if'
         if (i < CodeLines.Count) then // <-- DODAJ TO
-           Inc(i); // <-- DODAJ TO (aby skonsumować 'end_if')
+           Inc(i);
       end
       else
       begin
@@ -404,7 +405,7 @@ begin
            Inc(i) // Skonsumuj 'end_if'
         else
            raise Exception.Create('Error: Expected "end_if" or "else".');
-        if (i < CodeLines.Count) then Inc(i); // Consume 'end_if'
+        //if (i < CodeLines.Count) then Inc(i); // Consume 'end_if'
       end;
 
       // Evaluate condition
@@ -429,7 +430,10 @@ begin
       Condition := Trim(Copy(Line, 6, posThen - 6));
       LoopBlock := ParseCodeBlock(CodeLines, i, 'end_while', 'while');
 
-      CurrentLoopState.BreakCalled := False;
+      //CurrentLoopState.BreakCalled := False;
+      //if (i < CodeLines.Count) then // <-- DODAJ TO
+      //   Inc(i); // <-- DODAJ TO (aby skonsumować 'end_while')
+
       CurrentLoopState.ContinueCalled := False;
 
       while (Eval(Condition) <> 0) and (not CurrentLoopState.BreakCalled) do
@@ -441,36 +445,49 @@ begin
           Continue;
         end;
       end;
+      CurrentLoopState.BreakCalled := False;
+      if (i < CodeLines.Count) then
+         Inc(i);
       CurrentLoopState.BreakCalled := False; // Reset state
     end
 
     // --- REPEAT Loop ---
-    else if LowerCase(Copy(Line, 1, 6)) = 'repeat' then
+else if LowerCase(Copy(Line, 1, 6)) = 'repeat' then
+begin
+  // 'i' zostanie ustawione na linię, w której jest 'until'
+  LoopBlock := ParseCodeBlock(CodeLines, i, 'until', 'repeat');
+
+  // Wczytaj warunek z linii 'until', na którą wskazuje 'i'
+  if i < CodeLines.Count then
+  begin
+    // Wczytaj warunek z bieżącej linii (pomijając 'until ')
+    Condition := Trim(Copy(RemoveComments(CodeLines[i]), 6, 255));
+    Inc(i); // Skonsumuj linię 'until'
+  end
+  else
+    raise Exception.Create('Error: Missing "until" condition.');
+
+  CurrentLoopState.BreakCalled := False;
+  CurrentLoopState.ContinueCalled := False;
+
+  repeat
+    ExecuteCodeBlock(LoopBlock);
+
+    // Poprawna obsługa 'continue'
+    if CurrentLoopState.ContinueCalled then
     begin
-      LoopBlock := ParseCodeBlock(CodeLines, i, 'until', 'repeat');
+      CurrentLoopState.ContinueCalled := False; // Zresetuj flagę
+      Continue; // Przejdź do sprawdzenia warunku 'until'
+    end;
 
-      // The 'until' line is the *next* line, which ParseCodeBlock skipped
-      if i > 0 then
-        Condition := Trim(Copy(RemoveComments(CodeLines[i-1]), 6, 255))
-      else
-        raise Exception.Create('Error: Missing "until" condition.');
+    // Poprawna obsługa 'break'
+    if CurrentLoopState.BreakCalled then
+      Break; // Wyjdź z pętli 'repeat'
 
-      CurrentLoopState.BreakCalled := False;
-      CurrentLoopState.ContinueCalled := False;
+  until (Eval(Condition) <> 0);
 
-      repeat
-        ExecuteCodeBlock(LoopBlock);
-        if CurrentLoopState.ContinueCalled then
-        begin
-          CurrentLoopState.ContinueCalled := False;
-          Continue;
-        end;
-        if CurrentLoopState.BreakCalled then
-          Break;
-      until (Eval(Condition) <> 0);
-
-      CurrentLoopState.BreakCalled := False; // Reset state
-    end
+  CurrentLoopState.BreakCalled := False; // Reset state
+end
 
     // --- Simple Statement ---
     else
@@ -568,6 +585,14 @@ begin
     VarName := Trim(Copy(Code, 1, Pos('=', Code)-1));
     VarValue := Trim(Copy(Code, Pos('=', Code)+1, Length(Code)));
 
+    //getTick()
+    if LowerCase(Trim(VarValue)) = 'gettick()' then
+    begin
+      SetFloatValue(VarName, GetTickCount64);
+      Writeln('Variable ', VarName, ' = ', GetFloatValue(VarName):0:0, ' ms');
+      Exit;
+    end;
+
     // read('prompt')
     if LowerCase(Copy(VarValue, 1, 5)) = 'read(' then
     begin
@@ -642,7 +667,8 @@ begin
     else
     begin
       SetFloatValue(VarName, Eval(VarValue));
-      Writeln('Variable ', VarName, ' = ', GetFloatValue(VarName):0:2);
+     // Writeln('Variable ', VarName, ' = ', GetFloatValue(VarName):0:2);
+       //Writeln('VarName', GetFloatValue(VarName):0:2);
       Exit;
     end;
   end;
@@ -676,32 +702,59 @@ begin
     Exit;
   end;
 
-  // sin()
+  //sin
   if LowerCase(Copy(Code, 1, 4)) = 'sin(' then
-  begin
-    FunctionName := 'sin';
-    FunctionArg := Copy(Code, 5, Length(Code)-5);
-  end
-  // cos()
-  else if LowerCase(Copy(Code, 1, 4)) = 'cos(' then
-  begin
-    FunctionName := 'cos';
-    FunctionArg := Copy(Code, 5, Length(Code)-5);
-  end
-  // sqrt()
-  else if LowerCase(Copy(Code, 1, 5)) = 'sqrt(' then
-  begin
-    FunctionName := 'sqrt';
-    FunctionArg := Copy(Code, 6, Length(Code)-6);
-  end
-  // Default: Evaluate expression
-  else
-  begin
-    Writeln('Result: ', Eval(Code):0:2);
-    Exit;
-  end;
+    begin
+      FunctionName := 'sin';
+      FunctionArg := Copy(Code, 5, Length(Code)-5);
+    end
+    // cos()
+    else if LowerCase(Copy(Code, 1, 4)) = 'cos(' then
+    begin
+      FunctionName := 'cos';
+      FunctionArg := Copy(Code, 5, Length(Code)-5);
+    end
+    // sqrt()
+    else if LowerCase(Copy(Code, 1, 5)) = 'sqrt(' then
+    begin
+      FunctionName := 'sqrt';
+      FunctionArg := Copy(Code, 6, Length(Code)-6);
+    end
+    // Default: Evaluate expression
+    else
+    begin
+      // Jeśli to nie 'print' ani żadna funkcja, potraktuj jako wyrażenie
+      Writeln('Result: ', Eval(Code):0:2);
+      Exit; // <-- Ten Exit jest poprawny
+    end;
 
-  Exit;
+    // --- Ten kod wykona się tylko jeśli znaleziono sin, cos lub sqrt ---
+
+    // Usuń ')' z FunctionArg
+    if (Length(FunctionArg) > 0) and (FunctionArg[Length(FunctionArg)] = ')') then
+      Delete(FunctionArg, Length(FunctionArg), 1);
+    FunctionArg := Trim(FunctionArg);
+
+   { if sin  true then
+    Writeln('Result: ', Sin(Eval(FunctionArg)):0:2);
+    if cos = true then
+    Writeln('Result: ', Cos(Eval(FunctionArg)):0:2);
+    if sqrt then
+    Writeln('Result: ', Sqrt(Eval(FunctionArg)):0:2);
+  }
+    // Wykonaj funkcję
+    {try
+      case FunctionName of
+        'sin': Writeln('Result: ', Sin(Eval(FunctionArg)):0:2);
+        'cos': Writeln('Result: ', Cos(Eval(FunctionArg)):0:2);
+        'sqrt': Writeln('Result: ', Sqrt(Eval(FunctionArg)):0:2);
+      end;
+    except
+      on E: Exception do
+        Writeln('Error in function ', FunctionName, ': ', E.Message);
+    end;
+    }
+    Exit; // <-- Ten Exit jest poprawny (kończy po wykonaniu funkcji)
 end;
 
 // --- Main Program ---
