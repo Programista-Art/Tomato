@@ -1,0 +1,5 @@
+name = read('Podaj swoje imię ')
+print('Witaj, ' + name)
+
+
+

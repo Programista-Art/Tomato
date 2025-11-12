@@ -1,0 +1,18 @@
+float start_time = 0
+float end_time = 0
+float a = 0
+float max_iter = 1000000
+
+print('Start pomiaru...')
+start_time = getTick()
+
+while a < max_iter do
+  a = a + 1
+end_while
+
+end_time = getTick()
+
+print('Koniec.')
+print('Czas wykonania (ms):')
+print(end_time - start_time)
+

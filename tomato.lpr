@@ -1,3 +1,6 @@
+{ Created by Programista Art }
+{ https://github.com/Programista-Art }
+{ https://dimitalart.pl/ }
 {$MODE DELPHI}
 {$H+}
 {$APPTYPE CONSOLE}
@@ -9,7 +12,7 @@ uses
   Generics.Collections, Generics.Defaults;
 
 type
-  TVarType = (vtFloat, vtBoolean, vtString, vtChar);
+  TVarType = (vtFloat, vtInt, vtBoolean, vtString, vtChar);
 
   TVariable = record
     VarType: TVarType;
@@ -31,12 +34,11 @@ var
   CurrentLoopState: TLoopState;
   GlobalCodeLines: TStringList; // Global list for parsing
 
-// --- Forward Declarations ---
 procedure ExecuteStatement(Code: string); forward;
 procedure RunProgram(CodeLines: TStringList); forward;
 procedure ExecuteCodeBlock(const Block: TCodeBlock); forward;
 
-// --- Helper Functions ---
+//Helper Functions
 
 { Function to remove comments }
 function RemoveComments(Line: string): string;
@@ -61,6 +63,7 @@ function VarTypeToString(VarType: TVarType): string;
 begin
   case VarType of
     vtFloat: Result := 'float';
+    vtInt: Result := 'int';
     vtBoolean: Result := 'bool';
     vtString: Result := 'string';
     vtChar: Result := 'char';
@@ -69,7 +72,36 @@ begin
   end;
 end;
 
-// --- Variable Management Functions ---
+function GetIntValue(VarName: string): Extended;
+var
+  V: TVariable;
+begin
+  if Variables.TryGetValue(VarName, V) then
+  begin
+    if V.VarType = vtInt then
+      Exit(V.FloatValue)
+    else
+      raise Exception.Create('Error: Attempt to read non-int value for variable ' + VarName);
+  end;
+  raise Exception.Create('Error: Variable ' + VarName + ' does not exist.');
+end;
+
+procedure SetIntValue(VarName: string; Value: Extended);
+var
+  V: TVariable;
+begin
+  if Variables.TryGetValue(VarName, V) and (V.VarType <> vtInt) then
+  begin
+    raise Exception.Create('Error: Cannot assign an int to a variable of type ' + VarTypeToString(V.VarType));
+  end;
+
+  // Create (or overwrite) a record
+  V.VarType := vtInt;
+  V.FloatValue := Round(Value);
+  Variables.AddOrSetValue(VarName, V);
+end;
+
+// Variable Management Functions
 
 function GetVariableDisplay(VarName: string): string;
 var
@@ -79,6 +111,7 @@ begin
   begin
     case V.VarType of
       vtFloat: Result := FloatToStr(V.FloatValue);
+      vtInt: Result := FloatToStr(Round(V.FloatValue));
       vtBoolean: Result := BoolToStr(V.BoolValue, True);
       vtString: Result := V.StrValue;
       vtChar: Result := V.CharValue;
@@ -144,7 +177,7 @@ begin
   raise Exception.Create('Error: Variable ' + VarName + ' does not exist.');
 end;
 
-// --- Set Variable Functions ---
+// Set Variable Functions
 
 procedure SetFloatValue(VarName: string; Value: Extended);
 var
@@ -198,7 +231,7 @@ begin
   Variables.AddOrSetValue(VarName, V);
 end;
 
-// --- Expression Evaluation ---
+//Expression Evaluation
 
 procedure AddVariablesToParser(Parser: TFPExpressionParser);
 var
@@ -206,8 +239,8 @@ var
 begin
   for Pair in Variables do
   begin
-    if Pair.Value.VarType = vtFloat then
-      Parser.Identifiers.AddFloatVariable(Pair.Key, Pair.Value.FloatValue);
+    if (Pair.Value.VarType = vtFloat) or (Pair.Value.VarType = vtInt) then
+    Parser.Identifiers.AddFloatVariable(Pair.Key, Pair.Value.FloatValue);
   end;
 end;
 
@@ -278,7 +311,7 @@ begin
   Result := ResultStr;
 end;
 
-// --- Type Conversion Functions ---
+//Type Conversion Functions
 
 function StrToFloat(const s: string): Extended;
 var
@@ -294,7 +327,7 @@ begin
   Result := FloatToStr(n);
 end;
 
-// --- Block Parsing and Execution ---
+// Block Parsing and Execution
 
 { Parses a block of code from a list of lines }
 function ParseCodeBlock(const CodeLines: TStringList; var StartIndex: Integer;
@@ -321,7 +354,7 @@ begin
     begin
       if NestLevel = 0 then
       begin
-         StartIndex := i; // <--- TAK POWINNO BYĆ
+         StartIndex := i;
         Exit(Block);
       end
       else
@@ -360,7 +393,7 @@ begin
   end;
 end;
 
-{ NEW: Main program execution loop }
+{ Main program execution loop }
 procedure RunProgram(CodeLines: TStringList);
 var
   i: Integer;
@@ -377,7 +410,7 @@ begin
 
     if Line = '' then Continue;
 
-    // --- IF Statement ---
+    // IF Statement ---
     if LowerCase(Copy(Line, 1, 2)) = 'if' then
     begin
       posThen := Pos('then', LowerCase(Line));
@@ -420,7 +453,7 @@ begin
         ExecuteCodeBlock(ElseBlock);
     end
 
-    // --- WHILE Loop ---
+    // WHILE Loop
     else if LowerCase(Copy(Line, 1, 5)) = 'while' then
     begin
       posThen := Pos('do', LowerCase(Line)); // 'while ... do'
@@ -451,18 +484,14 @@ begin
       CurrentLoopState.BreakCalled := False; // Reset state
     end
 
-    // --- REPEAT Loop ---
+// REPEAT Loop
 else if LowerCase(Copy(Line, 1, 6)) = 'repeat' then
 begin
-  // 'i' zostanie ustawione na linię, w której jest 'until'
   LoopBlock := ParseCodeBlock(CodeLines, i, 'until', 'repeat');
-
-  // Wczytaj warunek z linii 'until', na którą wskazuje 'i'
   if i < CodeLines.Count then
   begin
-    // Wczytaj warunek z bieżącej linii (pomijając 'until ')
     Condition := Trim(Copy(RemoveComments(CodeLines[i]), 6, 255));
-    Inc(i); // Skonsumuj linię 'until'
+    Inc(i);
   end
   else
     raise Exception.Create('Error: Missing "until" condition.');
@@ -472,24 +501,16 @@ begin
 
   repeat
     ExecuteCodeBlock(LoopBlock);
-
-    // Poprawna obsługa 'continue'
     if CurrentLoopState.ContinueCalled then
     begin
-      CurrentLoopState.ContinueCalled := False; // Zresetuj flagę
-      Continue; // Przejdź do sprawdzenia warunku 'until'
+      CurrentLoopState.ContinueCalled := False;
+      Continue;
     end;
-
-    // Poprawna obsługa 'break'
     if CurrentLoopState.BreakCalled then
-      Break; // Wyjdź z pętli 'repeat'
-
+      Break;
   until (Eval(Condition) <> 0);
-
-  CurrentLoopState.BreakCalled := False; // Reset state
+  CurrentLoopState.BreakCalled := False;
 end
-
-    // --- Simple Statement ---
     else
     begin
       ExecuteStatement(Line); // Execute single line
@@ -506,14 +527,17 @@ end;
 { SIMPLIFIED: Executes only a single, simple statement }
 procedure ExecuteStatement(Code: string);
 var
+V: TVariable;
+ResultValue: Extended;
+var
   Keyword, Rest, VarName, VarValue, Arg, InputPrompt, UserInput: string;
-  FunctionName: string;
-  FunctionArg: string;
+  FunctionName: AnsiString;
+  FunctionArg: AnsiString;
 begin
   Code := Trim(RemoveComments(Code));
   if Code = '' then Exit;
 
-  // --- Loop Control ---
+  // Loop Control
   if LowerCase(Code) = 'break' then
   begin
     CurrentLoopState.BreakCalled := True;
@@ -525,7 +549,7 @@ begin
     Exit;
   end;
 
-  // --- Block statements are NOT allowed in REPL / single statement context ---
+  // Block statements are NOT allowed in REPL / single statement context ---
   if (LowerCase(Copy(Code, 1, 2)) = 'if') or
      (LowerCase(Copy(Code, 1, 5)) = 'while') or
      (LowerCase(Copy(Code, 1, 6)) = 'repeat') then
@@ -533,11 +557,11 @@ begin
      raise Exception.Create('Error: Block statements (if, while, repeat) are only supported in file mode.');
   end;
 
-  // --- Variable Declaration ---
+  // Variable Declaration
   if Pos(' ', Code) > 0 then
   begin
     Keyword := LowerCase(Copy(Code, 1, Pos(' ', Code)-1));
-    if (Keyword = 'string') or (Keyword = 'float') or (Keyword = 'bool') or (Keyword = 'char') then
+    if (Keyword = 'string') or (Keyword = 'float') or (Keyword = 'bool') or (Keyword = 'char') or (Keyword = 'int') then
     begin
       Rest := Trim(Copy(Code, Length(Keyword)+1, Length(Code)));
       if Pos('=', Rest) = 0 then
@@ -559,6 +583,12 @@ begin
         SetFloatValue(VarName, Eval(VarValue));
         Writeln('Variable ', VarName, ' (float) = ', GetFloatValue(VarName):0:2);
       end
+      else if Keyword = 'int' then
+      begin
+        SetIntValue(VarName, Eval(VarValue));
+        Writeln('Variable ', VarName, ' (int) = ', GetIntValue(VarName):0:0);
+      end
+
       else if Keyword = 'bool' then
       begin
         if (VarValue = 'true') or (VarValue = 'false') then
@@ -579,7 +609,7 @@ begin
     end;
   end;
 
-  // --- Assignment ---
+  // Assignment
   if Pos('=', Code) > 0 then
   begin
     VarName := Trim(Copy(Code, 1, Pos('=', Code)-1));
@@ -588,8 +618,8 @@ begin
     //getTick()
     if LowerCase(Trim(VarValue)) = 'gettick()' then
     begin
-      SetFloatValue(VarName, GetTickCount64);
-      Writeln('Variable ', VarName, ' = ', GetFloatValue(VarName):0:0, ' ms');
+      SetIntValue(VarName, GetTickCount64);
+      Writeln('Variable ', VarName, ' = ', GetIntValue(VarName):0:0, ' ms');
       Exit;
     end;
 
@@ -666,9 +696,30 @@ begin
     // Default: Assigning float expression
     else
     begin
-      SetFloatValue(VarName, Eval(VarValue));
-     // Writeln('Variable ', VarName, ' = ', GetFloatValue(VarName):0:2);
-       //Writeln('VarName', GetFloatValue(VarName):0:2);
+    //  SetFloatValue(VarName, Eval(VarValue));
+    // // Writeln('Variable ', VarName, ' = ', GetFloatValue(VarName):0:2);
+    //   //Writeln('VarName', GetFloatValue(VarName):0:2);
+    //  Exit;
+    //end;
+      ResultValue := Eval(VarValue); // Oblicz wartość tylko raz
+
+      if Variables.TryGetValue(VarName, V) then
+      begin
+        // Zmienna istnieje, uszanuj jej typ
+        case V.VarType of
+          vtInt: SetIntValue(VarName, ResultValue);
+          vtFloat: SetFloatValue(VarName, ResultValue);
+        else
+          // Próba przypisania liczby do np. stringu lub bool
+          raise Exception.Create('Error: Cannot assign a number to a variable of type ' + VarTypeToString(V.VarType));
+        end;
+      end
+      else
+      begin
+        // Zmienna nie istnieje - domyślnie stwórz float
+        // (lub int, jeśli wolisz, wtedy zmień na SetIntValue)
+        SetFloatValue(VarName, ResultValue);
+      end;
       Exit;
     end;
   end;
@@ -723,41 +774,34 @@ begin
     // Default: Evaluate expression
     else
     begin
-      // Jeśli to nie 'print' ani żadna funkcja, potraktuj jako wyrażenie
+      // If it's not 'print' or any function, treat it as an expression
       Writeln('Result: ', Eval(Code):0:2);
-      Exit; // <-- Ten Exit jest poprawny
+      Exit;
     end;
 
-    // --- Ten kod wykona się tylko jeśli znaleziono sin, cos lub sqrt ---
+    // This code will only execute if sin, cos or sqrt is found
 
-    // Usuń ')' z FunctionArg
     if (Length(FunctionArg) > 0) and (FunctionArg[Length(FunctionArg)] = ')') then
       Delete(FunctionArg, Length(FunctionArg), 1);
     FunctionArg := Trim(FunctionArg);
+    try
+      if FunctionName = 'sin' then
+        Writeln('Result: ', Sin(Eval(FunctionArg)):0:2)
 
-   { if sin  true then
-    Writeln('Result: ', Sin(Eval(FunctionArg)):0:2);
-    if cos = true then
-    Writeln('Result: ', Cos(Eval(FunctionArg)):0:2);
-    if sqrt then
-    Writeln('Result: ', Sqrt(Eval(FunctionArg)):0:2);
-  }
-    // Wykonaj funkcję
-    {try
-      case FunctionName of
-        'sin': Writeln('Result: ', Sin(Eval(FunctionArg)):0:2);
-        'cos': Writeln('Result: ', Cos(Eval(FunctionArg)):0:2);
-        'sqrt': Writeln('Result: ', Sqrt(Eval(FunctionArg)):0:2);
-      end;
+      else if FunctionName = 'cos' then
+        Writeln('Result: ', Cos(Eval(FunctionArg)):0:2)
+
+      else if FunctionName = 'sqrt' then
+        Writeln('Result: ', Sqrt(Eval(FunctionArg)):0:2);
+
     except
       on E: Exception do
         Writeln('Error in function ', FunctionName, ': ', E.Message);
     end;
-    }
-    Exit; // <-- Ten Exit jest poprawny (kończy po wykonaniu funkcji)
+    Exit;
 end;
 
-// --- Main Program ---
+// Main Program
 
 procedure LoadCodeFromFile(FilePath: string);
 begin
@@ -778,10 +822,10 @@ end;
 var
   Code: string;
 begin
-  Writeln('Tomato');
-  Writeln('Created by Programista Art');
-  Writeln('https://github.com/Programista-Art');
-  Writeln('-------------------');
+  Writeln('Tomato V1.0.0.0');
+ // Writeln('Created by Programista Art');
+ // Writeln('https://github.com/Programista-Art');
+ // Writeln('-------------------');
   SetConsoleOutputCP(65001);
 
   Variables := TDictionary<string, TVariable>.Create;
@@ -793,7 +837,7 @@ begin
     begin
       // Start REPL (Interactive Mode)
       repeat
-        Write('Command: ');
+        Write('> ');
         ReadLn(Code);
         if LowerCase(Code) = 'exit' then Break;
         try

@@ -1,0 +1,14 @@
+float x = 10
+float y = 0
+
+if x > 5 then
+  print('X jest wieksze od 5!')
+  y = x * 2
+else
+  print('X nie jest wieksze od 5.')
+  y = 0
+end_if
+
+print('................')
+print('Wartosc y to: ' + y)
+

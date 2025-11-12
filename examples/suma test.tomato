@@ -1,0 +1,4 @@
+float a = 100
+float b = 200
+float suma = a+b
+print('Wynik: ' + suma)
