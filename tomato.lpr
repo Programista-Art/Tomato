@@ -821,6 +821,9 @@ end;
 
 var
   Code: string;
+
+{$R *.res}
+
 begin
   Writeln('Tomato V1.0.0.0');
  // Writeln('Created by Programista Art');
