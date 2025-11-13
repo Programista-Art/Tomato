@@ -1,14 +1,13 @@
-float a = 5.6
-float b = 10.4
-float sum = a + b
-print(sum)
+float a = 10.00
 
-//warunek
-if sum > 5 then
-print('sum > 5')
-else
-print('sum < 5')
-end_if
+// Pętla wykonuje się, dopóki 'a' jest mniejsze lub równe 20
+while a <= 20.00 do
 
+  // Kod do wykonania w pętli:
+  print(a)      // Wypisz aktualną wartość 'a'
+  a = a + 1   // Zwiększ 'a' o 1 (to kluczowe, aby pętla się zakończyła!)
 
+end_while
+
+print('Koniec pętli.')
 

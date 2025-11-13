@@ -1,12 +1,4 @@
-float a = 5.6
-float b = 10.4
-float sum = a + b
-print(sum)
-if sum > 5 then
-print('sum > 5')
-else
-print('sum < 5')
-end_if
-
-
-
+int a = 100
+int b = 200
+int suma = a+b
+print('Wynik: ' + suma)
